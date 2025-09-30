@@ -74,15 +74,20 @@
 						.createUserWithEmailAndPassword(email, password)
 						.then((userCredential) => {
 							const user = userCredential.user;
-							return db.ref("users/" + user.uid).set({
-								nama,
-								telepon,
-								alamat,
-								email,
+
+							return user.sendEmailVerification().then(() => {
+								return db.ref("users/" + user.uid).set({
+									nama,
+									telepon,
+									alamat,
+									email,
+								});
 							});
 						})
 						.then(() => {
-							alert("Registrasi berhasil! Silakan login.");
+							alert(
+								"Registrasi berhasil! Silakan cek email Anda untuk verifikasi sebelum login."
+							);
 							window.location.href = "login.html";
 						})
 						.catch((error) => {

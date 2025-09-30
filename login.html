@@ -45,21 +45,73 @@
 		<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 		<script src="firebase-config.js"></script>
 		<script>
-			document.getElementById("loginForm").addEventListener("submit", (e) => {
-				e.preventDefault();
-				const email = document.getElementById("email").value;
-				const password = document.getElementById("password").value;
+			document
+				.getElementById("loginForm")
+				.addEventListener("submit", async (e) => {
+					e.preventDefault();
+					const emailInput = document.getElementById("email").value.trim();
+					const password = document.getElementById("password").value;
 
-				auth
-					.signInWithEmailAndPassword(email, password)
-					.then(() => {
-            alert("Login Berhasil");
+					const email = emailInput.toLowerCase();
+
+					try {
+						const usersRef = db.ref("users");
+						const snapshot = await usersRef
+							.orderByChild("email")
+							.equalTo(email)
+							.once("value");
+
+						if (!snapshot.exists()) {
+							alert("Akun belum terdaftar. Silakan daftar terlebih dahulu.");
+							return;
+						}
+
+						const userCredential = await auth.signInWithEmailAndPassword(
+							email,
+							password
+						);
+						const user = userCredential.user;
+
+						if (!user.emailVerified) {
+							await auth.signOut();
+							alert(
+								"Akun belum terverifikasi. Silakan cek email (inbox/spam)."
+							);
+							return;
+						}
+
+						const usersObj = snapshot.val();
+						const firstUid = Object.keys(usersObj)[0];
+						const profile = usersObj[firstUid] || {};
+
+						alert(
+							`Login berhasil. Selamat datang, ${profile.nama || user.email}!`
+						);
 						window.location.href = "index.html";
-					})
-					.catch((err) =>
-						alert("Login gagal, periksa kembali email dan password anda!")
-					);
-			});
+					} catch (error) {
+						let error_message = "";
+						let parsed = null;
+						try {
+							parsed = JSON.parse(error.message);
+						} catch (e) {
+							parsed = null;
+						}
+
+						if (
+							parsed &&
+							parsed.error &&
+							parsed.error.message === "INVALID_LOGIN_CREDENTIALS"
+						) {
+							error_message = "Password salah. Silakan coba lagi.";
+						} else if (parsed && parsed.error && parsed.error.message) {
+							error_message = "Terjadi error: " + parsed.error.message;
+						} else {
+							error_message =
+								"Terjadi error: " + (error.message || "Unknown error");
+						}
+						alert(error_message);
+					}
+				});
 		</script>
 	</body>
 </html>
